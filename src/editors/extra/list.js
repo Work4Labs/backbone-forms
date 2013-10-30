@@ -230,6 +230,24 @@
         return item.validate();
       });
 
+      //Check error at List level
+      var value = this.getValue(),
+          formValues = this.form ? this.form.getValue() : {},
+          validators = this.schema.listValidators,
+          getValidator = this.getValidator;
+
+      if (validators) {
+        var error = null;
+        _.every(validators, function(validator) {
+          error = getValidator(validator)(value, formValues);
+          return error ? false : true;
+        });
+
+        if (error) {
+          errors.push(error);
+        }
+      }
+
       //Check if any item has errors
       var hasErrors = _.compact(errors).length ? true : false;
       if (!hasErrors) return null;
