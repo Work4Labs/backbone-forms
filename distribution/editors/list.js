@@ -2,7 +2,7 @@
 
   /**
    * List editor
-   * 
+   *
    * An array editor. Creates a list of other editor items.
    *
    * Special options:
@@ -72,9 +72,9 @@
       this.setElement($el);
       this.$el.attr('id', this.id);
       this.$el.attr('name', this.key);
-            
+
       if (this.hasFocus) this.trigger('blur', this);
-      
+
       return this;
     },
 
@@ -96,11 +96,11 @@
         Editor: this.Editor,
         key: this.key
       }).render();
-      
+
       var _addItem = function() {
         self.items.push(item);
         self.$list.append(item.el);
-        
+
         item.editor.on('all', function(event) {
           if (event === 'change') return;
 
@@ -134,11 +134,11 @@
             self.trigger('blur', self);
           }, 0);
         }, self);
-        
+
         if (userInitiated || value) {
           item.addEventTriggered = true;
         }
-        
+
         if (userInitiated) {
           self.trigger('add', self, item.editor);
           self.trigger('change', self);
@@ -155,7 +155,7 @@
         _addItem();
         item.editor.focus();
       }
-      
+
       return item;
     },
 
@@ -172,7 +172,7 @@
 
       this.items[index].remove();
       this.items.splice(index, 1);
-      
+
       if (item.addEventTriggered) {
         this.trigger('remove', this, item.editor);
         this.trigger('change', this);
@@ -194,18 +194,18 @@
       this.value = value;
       this.render();
     },
-    
+
     focus: function() {
       if (this.hasFocus) return;
 
       if (this.items[0]) this.items[0].editor.focus();
     },
-    
+
     blur: function() {
       if (!this.hasFocus) return;
 
       var focusedItem = _.find(this.items, function(item) { return item.editor.hasFocus; });
-      
+
       if (focusedItem) focusedItem.editor.blur();
     },
 
@@ -217,29 +217,48 @@
 
       Form.editors.Base.prototype.remove.call(this);
     },
-    
+
     /**
      * Run validation
-     * 
+     *
      * @return {Object|Null}
      */
     validate: function() {
-      if (!this.validators) return null;
 
       //Collect errors
       var errors = _.map(this.items, function(item) {
         return item.validate();
       });
 
+      //Check error at List level
+      var value = this.getValue(),
+          formValues = this.form ? this.form.getValue() : {},
+          validators = this.schema.listValidators,
+          getValidator = this.getValidator;
+
+      var list_errors = [];
+      if (validators) {
+        var error = null;
+        _.every(validators, function(validator) {
+          error = getValidator(validator)(value, formValues);
+          return error ? false : true;
+        });
+
+        if (error) {
+          list_errors.push(error);
+        }
+      }
+
       //Check if any item has errors
-      var hasErrors = _.compact(errors).length ? true : false;
+      var hasErrors = _.compact(errors).length || _.compact(list_errors).length ? true : false;
       if (!hasErrors) return null;
 
       //If so create a shared error
       var fieldError = {
         type: 'list',
         message: 'Some of the items in the list failed validation',
-        errors: errors
+        errors: errors,
+        list_errors: list_errors,
       };
 
       return fieldError;
@@ -310,7 +329,7 @@
 
       //Replace the entire element so there isn't a wrapper tag
       this.setElement($el);
-        
+
       return this;
     },
 
@@ -321,11 +340,11 @@
     setValue: function(value) {
       this.editor.setValue(value);
     },
-    
+
     focus: function() {
       this.editor.focus();
     },
-    
+
     blur: function() {
       this.editor.blur();
     },
@@ -342,15 +361,20 @@
           validators = this.schema.validators,
           getValidator = this.getValidator;
 
-      if (!validators) return null;
+      if (!validators && !this.editor.validate) return null;
 
-      //Run through validators until an error is found
       var error = null;
-      _.every(validators, function(validator) {
-        error = getValidator(validator)(value, formValues);
-
-        return error ? false : true;
-      });
+      //Run through editor validation
+      if (this.editor.validate) {
+        error = this.editor.validate();
+      }
+      if (!error) {
+        //Run through validators until an error is found
+        _.every(validators, function(validator) {
+          error = getValidator(validator)(value, formValues);
+          return error ? false : true;
+        });
+      }
 
       //Show/hide error
       if (error){
@@ -394,7 +418,7 @@
 
 
   /**
-   * Base modal object editor for use with the List editor; used by Object 
+   * Base modal object editor for use with the List editor; used by Object
    * and NestedModal list types
    */
   Form.editors.List.Modal = Form.editors.Base.extend({
@@ -413,9 +437,9 @@
      */
     initialize: function(options) {
       options = options || {};
-      
+
       Form.editors.Base.prototype.initialize.call(this, options);
-      
+
       //Dependencies
       if (!Form.editors.List.Modal.ModalAdapter) throw 'A ModalAdapter is required';
 
@@ -464,7 +488,7 @@
      * Function which returns a generic string representation of an object
      *
      * @param {Object} value
-     * 
+     *
      * @return {String}
      */
     itemToString: function(value) {
@@ -501,7 +525,7 @@
 
       //If there's a specified toString use that
       if (schema.itemToString) return schema.itemToString(value);
-      
+
       //Otherwise use the generic method or custom overridden method
       return this.itemToString(value);
     },
@@ -526,7 +550,7 @@
       this.trigger('focus', this);
 
       modal.on('cancel', this.onModalClosed, this);
-      
+
       modal.on('ok', _.bind(this.onModalSubmitted, this));
     },
 
@@ -550,7 +574,7 @@
       this.renderSummary();
 
       if (isNew) this.trigger('readyToAdd');
-      
+
       this.trigger('change', this);
 
       this.onModalClosed();
@@ -574,16 +598,16 @@
     setValue: function(value) {
       this.value = value;
     },
-    
+
     focus: function() {
       if (this.hasFocus) return;
 
       this.openEditor();
     },
-    
+
     blur: function() {
       if (!this.hasFocus) return;
-      
+
       if (this.modal) {
         this.modal.trigger('cancel');
       }
@@ -598,7 +622,7 @@
     //Defaults to BootstrapModal (http://github.com/powmedia/backbone.bootstrap-modal)
     //Can be replaced with another adapter that implements the same interface.
     ModalAdapter: Backbone.BootstrapModal,
-    
+
     //Make the wait list for the 'ready' event before adding the item to the list
     isAsync: true
   });
@@ -641,7 +665,7 @@
 
       //If there's a specified toString use that
       if (schema.itemToString) return schema.itemToString(value);
-      
+
       //Otherwise use the model
       return new (schema.model)(value).toString();
     }

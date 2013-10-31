@@ -731,7 +731,7 @@ Form.Field = Backbone.View.extend({
 
     //Override defaults
     this.template = options.template || schema.template || this.constructor.template;
-    this.errorClassName = options.errorClassName || this.constructor.errorClassName;
+    this.errorClassName = options.errorClassName || schema.errorClassName || this.constructor.errorClassName;
 
     //Create editor
     this.editor = this.createEditor();
@@ -894,6 +894,9 @@ Form.Field = Backbone.View.extend({
   setError: function(msg) {
     //Nested form editors (e.g. Object) set their errors internally
     if (this.editor.hasNestedForm) return;
+
+    //List editors made of Nested forms (e.g. Object) set their errors internally
+    if (this.editor.$list && this.editor.items[0].editor.hasNestedForm) return;
 
     //Add error CSS class
     this.$el.addClass(this.errorClassName);
@@ -1873,7 +1876,7 @@ Form.editors.Checkboxes = Form.editors.Select.extend({
 
     _.each(array, function(option, index) {
       var itemHtml = '<li>';
-			var close = true;
+      var close = true;
       if (_.isObject(option)) {
         if (option.group) {
           var originalId = self.id;
@@ -1882,7 +1885,7 @@ Form.editors.Checkboxes = Form.editors.Select.extend({
           itemHtml += (self._arrayToHtml(option.options));
           itemHtml += ('</fieldset>');
           self.id = originalId;
-					close = false;
+          close = false;
         }else{
           var val = (option.val || option.val === 0) ? option.val : '';
           itemHtml += ('<input type="checkbox" name="'+self.getName()+'" value="'+val+'" id="'+self.id+'-'+index+'" />');
@@ -1893,9 +1896,9 @@ Form.editors.Checkboxes = Form.editors.Select.extend({
         itemHtml += ('<input type="checkbox" name="'+self.getName()+'" value="'+option+'" id="'+self.id+'-'+index+'" />');
         itemHtml += ('<label for="'+self.id+'-'+index+'">'+option+'</label>');
       }
-			if(close){
-				itemHtml += '</li>';
-			}
+      if(close){
+        itemHtml += '</li>';
+      }
       html.push(itemHtml);
     });
 
